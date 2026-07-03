@@ -1,9 +1,15 @@
 const { createClient } = require('@libsql/client');
 const path = require('path');
+const fs = require('fs');
 
-const db = createClient({
-  url: `file:${path.join(__dirname, '..', 'fortified.db')}`,
-});
+const DB_URL = process.env.DATABASE_URL || `file:${path.join(__dirname, '..', 'fortified.db')}`;
+
+// Ensure the parent directory exists — required when Railway mounts a volume at /data
+if (DB_URL.startsWith('file:')) {
+  fs.mkdirSync(path.dirname(DB_URL.slice(5)), { recursive: true });
+}
+
+const db = createClient({ url: DB_URL });
 
 async function init() {
   await db.executeMultiple(`
