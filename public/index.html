@@ -1,0 +1,1301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fortified — Lift Tracker</title>
+<style>
+  :root {
+    --black: #1A1A1A;
+    --purple: #7C10F9;
+    --purple-light: #f3e8ff;
+    --purple-mid: #c084fc;
+    --white: #FFFFFF;
+    --gray-50: #F7F7F7;
+    --gray-100: #EEEEEE;
+    --gray-200: #D4D4D4;
+    --gray-400: #9A9A9A;
+    --gray-600: #555555;
+    --pb-gold: #D97706;
+    --pb-gold-light: #FEF3C7;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Calibri', 'Segoe UI', system-ui, sans-serif;
+    background: var(--gray-50);
+    color: var(--black);
+    min-height: 100vh;
+    padding-bottom: 60px;
+  }
+
+  /* SCREENS */
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* MEMBER SELECT */
+  .select-screen {
+    max-width: 420px;
+    margin: 0 auto;
+    padding: 48px 24px 24px;
+    text-align: center;
+  }
+
+  .select-screen h1 {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--black);
+    margin-bottom: 8px;
+  }
+
+  .select-screen p {
+    font-size: 15px;
+    color: var(--gray-600);
+    margin-bottom: 32px;
+    line-height: 1.5;
+  }
+
+  .select-wrap {
+    position: relative;
+    margin-bottom: 16px;
+  }
+
+  .member-search {
+    width: 100%;
+    padding: 14px 16px;
+    font-size: 16px;
+    font-family: inherit;
+    border: 1.5px solid var(--gray-200);
+    border-radius: var(--radius);
+    background: var(--white);
+    color: var(--black);
+    transition: border-color 0.15s;
+  }
+
+  .member-search:focus {
+    outline: none;
+    border-color: var(--purple);
+  }
+
+  .member-search.has-match {
+    border-radius: var(--radius) var(--radius) 0 0;
+    border-bottom-color: var(--gray-100);
+  }
+
+  .search-results {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--white);
+    border: 1.5px solid var(--purple);
+    border-top: none;
+    border-radius: 0 0 var(--radius) var(--radius);
+    max-height: 220px;
+    overflow-y: auto;
+    z-index: 200;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  }
+
+  .search-results.visible { display: block; }
+
+  .search-result-item {
+    padding: 12px 16px;
+    font-size: 15px;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.1s;
+    border-bottom: 1px solid var(--gray-100);
+  }
+
+  .search-result-item:last-child { border-bottom: none; }
+
+  .search-result-item:hover, .search-result-item.focused {
+    background: var(--purple-light);
+    color: var(--purple);
+  }
+
+  .search-hint {
+    font-size: 12px;
+    color: var(--gray-400);
+    margin-bottom: 20px;
+    margin-top: -24px;
+  }
+
+  .search-no-results {
+    padding: 12px 16px;
+    font-size: 14px;
+    color: var(--gray-400);
+    font-style: italic;
+  }
+
+  .btn-primary {
+    width: 100%;
+    padding: 14px;
+    background: var(--purple);
+    color: var(--white);
+    border: none;
+    border-radius: var(--radius);
+    font-size: 16px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+
+  .btn-primary:hover { opacity: 0.9; }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* DASHBOARD */
+  .dashboard {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 20px 16px;
+  }
+
+  /* LIFT DROPDOWN */
+  .lift-dropdown-wrap {
+    position: relative;
+    margin-bottom: 20px;
+  }
+
+  .lift-dropdown {
+    width: 100%;
+    padding: 13px 16px;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: inherit;
+    border: 1.5px solid var(--gray-200);
+    border-radius: var(--radius);
+    background: var(--black);
+    color: var(--white);
+    appearance: none;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+
+  .lift-dropdown:focus {
+    outline: none;
+    border-color: var(--purple);
+  }
+
+  .lift-dropdown-arrow {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: var(--white);
+    font-size: 12px;
+  }
+
+  /* COMMENTS */
+  .comments-wrap {
+    margin-top: 12px;
+  }
+
+  .comments-label {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--gray-400);
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  .comments-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1.5px solid var(--gray-200);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--black);
+    background: var(--gray-50);
+    resize: none;
+    min-height: 72px;
+    transition: border-color 0.15s;
+    line-height: 1.5;
+  }
+
+  .comments-input:focus {
+    outline: none;
+    border-color: var(--purple);
+    background: var(--white);
+  }
+
+  .comments-input::placeholder { color: var(--gray-400); }
+
+  .history-comments {
+    font-size: 13px;
+    color: var(--gray-600);
+    margin-top: 6px;
+    font-style: italic;
+    line-height: 1.5;
+  }
+
+  /* LOG ENTRY */
+  .card {
+    background: var(--white);
+    border-radius: var(--radius);
+    border: 1px solid var(--gray-100);
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+
+  .card-title {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--gray-400);
+    margin-bottom: 16px;
+  }
+
+  .sets-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .set-row {
+    display: grid;
+    grid-template-columns: 40px 1fr 1fr auto;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .set-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--gray-400);
+    text-align: center;
+  }
+
+  .set-input {
+    padding: 10px 12px;
+    border: 1.5px solid var(--gray-200);
+    border-radius: var(--radius-sm);
+    font-size: 15px;
+    font-family: inherit;
+    color: var(--black);
+    background: var(--gray-50);
+    width: 100%;
+    transition: border-color 0.15s;
+  }
+
+  .set-input:focus {
+    outline: none;
+    border-color: var(--purple);
+    background: var(--white);
+  }
+
+  .set-input::placeholder { color: var(--gray-400); }
+
+  .set-input-wrap { position: relative; }
+
+  .set-unit {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 12px;
+    color: var(--gray-400);
+    pointer-events: none;
+  }
+
+  .btn-remove {
+    background: none;
+    border: none;
+    color: var(--gray-400);
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    padding: 4px;
+    border-radius: 4px;
+    transition: color 0.15s;
+    font-family: inherit;
+  }
+
+  .btn-remove:hover { color: #dc2626; }
+
+  .set-headers {
+    display: grid;
+    grid-template-columns: 40px 1fr 1fr auto;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .set-header-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--gray-400);
+    text-align: center;
+  }
+
+  .btn-add-set {
+    background: none;
+    border: 1.5px dashed var(--gray-200);
+    border-radius: var(--radius-sm);
+    padding: 10px;
+    width: 100%;
+    font-size: 14px;
+    color: var(--gray-400);
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+    margin-bottom: 16px;
+  }
+
+  .btn-add-set:hover { border-color: var(--purple-mid); color: var(--purple); }
+
+  .btn-log {
+    width: 100%;
+    padding: 13px;
+    background: var(--purple);
+    color: var(--white);
+    border: none;
+    border-radius: var(--radius);
+    font-size: 15px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    letter-spacing: 0.02em;
+  }
+
+  .btn-log:hover { opacity: 0.88; }
+
+  /* PB BANNER */
+  .pb-banner {
+    display: none;
+    background: var(--pb-gold-light);
+    border: 1.5px solid #FCD34D;
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+
+  .pb-banner.visible { display: block; }
+
+  .pb-banner-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--pb-gold);
+    margin-bottom: 4px;
+  }
+
+  .pb-banner-detail {
+    font-size: 13px;
+    color: #92400E;
+  }
+
+  /* RM TABLE */
+  .rm-table-wrap { overflow-x: auto; }
+
+  .rm-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+
+  .rm-table th {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--gray-400);
+    text-align: left;
+    padding: 0 0 8px;
+    border-bottom: 1px solid var(--gray-100);
+  }
+
+  .rm-table td {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--gray-100);
+    color: var(--black);
+  }
+
+  .rm-table tr:last-child td { border-bottom: none; }
+
+  .rm-label {
+    font-weight: 700;
+    font-size: 13px;
+    width: 40px;
+  }
+
+  .rm-kg {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--purple);
+  }
+
+  .rm-kg-unit {
+    font-size: 12px;
+    color: var(--gray-400);
+    margin-left: 2px;
+  }
+
+  .rm-basis {
+    font-size: 12px;
+    color: var(--gray-400);
+    text-align: right;
+  }
+
+  /* HISTORY */
+  .history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .history-item {
+    background: var(--white);
+    border-radius: var(--radius);
+    border: 1px solid var(--gray-100);
+    padding: 14px 16px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .history-date {
+    font-size: 12px;
+    color: var(--gray-400);
+    margin-bottom: 4px;
+  }
+
+  .history-lift {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--black);
+    margin-bottom: 6px;
+  }
+
+  .history-sets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .set-pill {
+    background: var(--gray-50);
+    border: 1px solid var(--gray-100);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 12px;
+    color: var(--gray-600);
+  }
+
+  .set-pill.best {
+    background: var(--purple-light);
+    border-color: var(--purple-mid);
+    color: var(--purple);
+    font-weight: 700;
+  }
+
+  .pb-badge {
+    background: var(--pb-gold-light);
+    border: 1px solid #FCD34D;
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--pb-gold);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* SECTION HEADER */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .section-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--black);
+  }
+
+  .section-lift-name {
+    font-size: 12px;
+    color: var(--purple);
+    font-weight: 700;
+  }
+
+  /* EMPTY STATE */
+  .empty-state {
+    text-align: center;
+    padding: 32px 16px;
+    color: var(--gray-400);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* PERSONAL BEST HISTORY */
+  .pb-history-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--gray-100);
+    font-size: 13px;
+  }
+  .pb-history-row:last-child { border-bottom: none; }
+  .pb-history-kg { font-weight: 700; color: var(--purple); font-size: 16px; }
+  .pb-history-meta { color: var(--gray-400); font-size: 12px; }
+
+  /* SWITCH MEMBER */
+  .btn-switch {
+    background: none;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-sm);
+    padding: 6px 12px;
+    font-size: 12px;
+    font-family: inherit;
+    color: var(--gray-600);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-switch:hover { border-color: var(--black); color: var(--black); }
+
+  /* NAV TABS */
+  .nav-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0;
+    background: var(--white);
+    border-bottom: 1px solid var(--gray-100);
+    margin-bottom: 20px;
+    position: sticky;
+    top: 0;
+    z-index: 90;
+  }
+
+  .nav-tab {
+    padding: 14px 8px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    color: var(--gray-400);
+    background: none;
+    border: none;
+    border-bottom: 2.5px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+  }
+
+  .nav-tab.active {
+    color: var(--purple);
+    border-bottom-color: var(--purple);
+  }
+
+  /* SUB TABS */
+  .sub-content { display: none; }
+  .sub-content.active { display: block; }
+
+  /* CHART */
+  .chart-container {
+    position: relative;
+    height: 160px;
+    margin-bottom: 8px;
+  }
+
+  canvas { display: block; }
+
+  /* BEST LIFT SUMMARY */
+  .best-lift-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .best-lift-card {
+    background: var(--gray-50);
+    border-radius: var(--radius-sm);
+    padding: 10px 8px;
+    text-align: center;
+  }
+
+  .best-lift-card .label {
+    font-size: 11px;
+    color: var(--gray-400);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 4px;
+  }
+
+  .best-lift-card .value {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--black);
+  }
+
+  .best-lift-card .unit {
+    font-size: 11px;
+    color: var(--gray-400);
+  }
+
+  .disclaimer {
+    font-size: 11px;
+    color: var(--gray-400);
+    text-align: center;
+    margin-top: 8px;
+    line-height: 1.5;
+  }
+
+  @media (max-width: 400px) {
+    .set-row { grid-template-columns: 34px 1fr 1fr auto; }
+    .set-headers { grid-template-columns: 34px 1fr 1fr auto; }
+  }
+</style>
+</head>
+<body>
+
+<!-- MEMBER SELECT SCREEN -->
+<div id="screen-select" class="screen active">
+    <div class="select-screen">
+    <h1>Lift Tracker</h1>
+    <p>Type your name to find your records and log today's lifts.</p>
+    <div class="select-wrap">
+      <input class="member-search" id="member-search" type="text" placeholder="Start typing your name..." autocomplete="off" autocorrect="off" spellcheck="false">
+      <div class="search-results" id="search-results"></div>
+    </div>
+    <button class="btn-primary" id="btn-enter" disabled onclick="enterDashboard()">View my records</button>
+  </div>
+</div>
+
+<!-- DASHBOARD SCREEN -->
+<div id="screen-dashboard" class="screen">
+
+  <!-- NAV -->
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showNav('log')">Log lift</button>
+    <button class="nav-tab" onclick="showNav('pbs')">Personal bests</button>
+    <button class="nav-tab" onclick="showNav('history')">History</button>
+  </div>
+
+  <div class="dashboard">
+
+    <!-- LOG LIFT -->
+    <div id="nav-log" class="sub-content active">
+      <div class="lift-dropdown-wrap">
+        <select class="lift-dropdown" id="log-lift-select" onchange="selectLift(this.value)">
+          <option value="Squat">Squat</option>
+          <option value="Strict Press">Strict Press</option>
+          <option value="Bench Press">Bench Press</option>
+          <option value="Deadlift">Deadlift</option>
+          <option value="Vertical Pull">Vertical Pull</option>
+          <option value="Split Squat">Split Squat</option>
+        </select>
+        <span class="lift-dropdown-arrow">▾</span>
+      </div>
+
+      <div id="pb-banner" class="pb-banner">
+        <div class="pb-banner-title" id="pb-banner-title">🏆 New personal best!</div>
+        <div class="pb-banner-detail" id="pb-banner-detail"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" id="log-lift-label">Squat — log today's sets</div>
+        <div class="set-headers">
+          <div class="set-header-label">Set</div>
+          <div class="set-header-label">kg</div>
+          <div class="set-header-label">Reps</div>
+          <div></div>
+        </div>
+        <div class="sets-list" id="sets-list"></div>
+        <button class="btn-add-set" onclick="addSet()">+ Add set</button>
+        <div class="comments-wrap">
+          <label class="comments-label" for="session-comments">Notes (optional)</label>
+          <textarea class="comments-input" id="session-comments" placeholder="How did it feel? Any details worth recording..."></textarea>
+        </div>
+        <button class="btn-log" onclick="logSession()">Save session</button>
+      </div>
+    </div>
+
+    <!-- PERSONAL BESTS -->
+    <div id="nav-pbs" class="sub-content">
+      <div class="lift-dropdown-wrap">
+        <select class="lift-dropdown" id="pb-lift-select" onchange="selectPBLift(this.value)">
+          <option value="Squat">Squat</option>
+          <option value="Strict Press">Strict Press</option>
+          <option value="Bench Press">Bench Press</option>
+          <option value="Deadlift">Deadlift</option>
+          <option value="Vertical Pull">Vertical Pull</option>
+          <option value="Split Squat">Split Squat</option>
+        </select>
+        <span class="lift-dropdown-arrow">▾</span>
+      </div>
+
+      <div class="card">
+        <div class="section-header">
+          <div class="card-title" style="margin:0">Achieved bests</div>
+          <div class="section-lift-name" id="pb-lift-label">Squat</div>
+        </div>
+        <div id="pb-achieved">
+          <div class="empty-state">No data yet. Log your first session to see your bests.</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-header">
+          <div class="card-title" style="margin:0">Rep max predictions</div>
+          <div style="font-size:11px;color:var(--gray-400)">Brzycki formula</div>
+        </div>
+        <div id="pb-rm-table">
+          <div class="empty-state">Log at least one session to see predictions.</div>
+        </div>
+        <div class="disclaimer" id="rm-disclaimer" style="display:none">Estimates based on your best recorded set. Accuracy is highest between 1–10 reps.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Best set over time</div>
+        <div class="chart-container">
+          <canvas id="pb-chart"></canvas>
+        </div>
+        <div class="disclaimer" id="chart-empty" style="display:none;color:var(--gray-400);font-size:13px;text-align:center;padding:40px 0">Not enough sessions to show a trend yet.</div>
+      </div>
+    </div>
+
+    <!-- HISTORY -->
+    <div id="nav-history" class="sub-content">
+      <div class="lift-dropdown-wrap">
+        <select class="lift-dropdown" id="hist-lift-select" onchange="selectHistLift(this.value)">
+          <option value="Squat">Squat</option>
+          <option value="Strict Press">Strict Press</option>
+          <option value="Bench Press">Bench Press</option>
+          <option value="Deadlift">Deadlift</option>
+          <option value="Vertical Pull">Vertical Pull</option>
+          <option value="Split Squat">Split Squat</option>
+        </select>
+        <span class="lift-dropdown-arrow">▾</span>
+      </div>
+      <div id="history-list" class="history-list"></div>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+const MEMBERS = ["Aga Atkins","Aida Hajdarpasic","Alex Defries","Ali Clarke","Alice Tearle","Alison Stone","Amy Foley","Andrew Gibson","Angus Roche","Anita Stubbings","Ann Hodges-Rider","Ann Lester","Anna Ciesielska","Anne Comins","Annie Jones","Bil Hassan","Bridget Clifford","Bruce Patience","Carmel Lane","Carole Lambourne","Caroline Reece","Caroline Thomson-Smith","Charlie Evans","Charlie Hall","Chirag Shah","Chloe Otter","Claire Britton","Claire Lawrence","Clive Zanker","Collette Seward","Corrine Grant","Crystal Danbury","David Bennett","David Hunt","David Neilson","David Spicer","Dawn Rogers","Debbie Gibson","Debs Coxall","Deepak Kumar","Diane Finck","Dorinda Marfo","Edward Dablin","Elise Craig","Emily Billings","Emma Fellingham","Gemma Hopkin","Gemma Wilson","Graham Barter","Hayley Pegram","Hayley Rimmer","Helen Butcher","Helen Holding","Helen Mackenzie","Jacky Alder","Jacqui Potts","Jan Freeborn","Jan Kirtley","Jane Butcher","Jane Graham","Janice Scarr","Jennifer Challberg","Jenny Evett","Jenny Rose","Jenny Tofield","Jenny Yull","Jo Morphet","Joanna Edwards","Judith Bloomfield","Julian Scarr","Julie Houston","Juliet Clutterbuck","Justine Norris","Karen Fitzgerald","Karen Jones","Karen Roche","Karim Kassam","Kate Young","Katherine Gibbard","Kevin Kolkea","Kevin Thompson","Kimberley Keegan","Kimberly Oakman","Lacey Townes","Laura Mynard","Lee King","Lekshmi Ratheesan","Lindsey McCluskie","Lisa Prior","Liz White","Louise Cassettari","Louise Grant","Luke Ford","Lynn Ferguson","Maggie Hogg","Manpreet Kaur","Mark Carter","Mark Rees","Michael Palmer","Michelle Lascelles","Mike Potts","Natalie Cockayne","Naveed Sheikh","Neha Shah","Nell Payne","Nick Jackson","Nicola Putt","Nigel Beeken","Paul Campbell","Paul Newman","Paul Snell","Penny Watts","Ploy Radford-Taylor","Rachel Wojniak","Rehela Sheikh","Reva Cope","Richard Cole","Richard Fletcher","Richard Jones","Rob Trice","Robert Firbank","Roland Smith","Russell Cooley","Ruth Wooderson","Sally Hunt","Saurabh Agarwal","Smita Khanijow","Stephanie Orr","Steve Jones","Sue Dadswell","Sue Yapp","Sue Zanker","Sylvia Patchett","Tess Watkins","Tony Grant","Tracy Allen","Tyrone Matthews","Veena Nellahalli","Venetta Smith","Wendy Melendez","Zahrah Hanif","Zoe Wilbourne","Aimee Granados","Alice Barker","Alison Rooney","Alison Wood","Ant Pedder","Anya Dunlop","Ashley Sainsbury","Bob Gregory","Charles Illing","Chetna Jain","Dan Elworthy","Danny Tomblin","Debbie Kelly-Greaves","Fernanda Pellegrini","Fiona Manser","Frank Elliott","Graeme White","Hannah Muston","Hayley Montague","Heather Sequeira","Helen Wooldridge","Ian Smith","Ian Watkins","James Gordon","James Hagon","Jane Miller","Janie Wood","Jenny Draper","Jo Timmins","Joanna Medlin","Katherine Spinks","Katie Harrison","Kevin Bursnall","Liz Kehoe","Lucy Draper","Marcelo Grandas","Mark Fogarty","Mel Bull","Neil Ackerman","Nikki Fhalora","Phil Metcalfe","Rob Shoebridge","Ryan Lane","Sarah Johnson","Sarah Powell","Scott Knight","Shane Busby","Shannon Horton","Shanti Persaud","Sharon Macnab","Sharon Morgan","Shirley Rogers","Simon Bateman","Steve Manser","Steve Wood","Sue Williams","Tanya Coles","Veronica Peat","Viv Williams","James O'Farrell-White","Julie Wood","Damon Largent","Grace Bloomfield","Graham Clements","Kevin Nicosia","Lucy Ellis","Russell Jones","Sam Gill","Tracey Largent","Tracy Gaillie","Sharon Roach","Liv Wojniak","Vikki James"];
+
+const LIFTS = ['Squat','Strict Press','Bench Press','Deadlift','Vertical Pull','Split Squat'];
+
+let currentMember = null;
+let currentMemberId = null;
+let currentLift = 'Squat';
+let currentPBLift = 'Squat';
+let currentHistLift = 'Squat';
+let pbChart = null;
+
+// --- API ---
+async function apiGetOrCreateMember(name) {
+  const res = await fetch('/api/members', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  });
+  if (!res.ok) throw new Error('Failed to load member');
+  return res.json();
+}
+
+async function apiGetSessions(memberId, lift) {
+  const res = await fetch(`/api/sessions?member_id=${memberId}&lift=${encodeURIComponent(lift)}`);
+  if (!res.ok) throw new Error('Failed to load sessions');
+  return res.json();
+}
+
+async function apiSaveSession(memberId, lift, sets, comments, date) {
+  const res = await fetch('/api/sessions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ member_id: memberId, lift, sets, comments, date }),
+  });
+  if (!res.ok) throw new Error('Failed to save session');
+  return res.json();
+}
+
+// --- BRZYCKI ---
+function brzycki1RM(kg, reps) {
+  if (reps === 1) return kg;
+  if (reps >= 37) return null;
+  return kg * (36 / (37 - reps));
+}
+
+function brzyckiTarget(oneRM, targetReps) {
+  if (targetReps === 1) return oneRM;
+  return oneRM * (37 - targetReps) / 36;
+}
+
+function bestSet(sets) {
+  let best = null;
+  sets.forEach(s => {
+    const e = brzycki1RM(s.kg, s.reps);
+    if (e !== null && (best === null || e > best.est1rm)) {
+      best = { kg: s.kg, reps: s.reps, est1rm: e };
+    }
+  });
+  return best;
+}
+
+// --- SEARCH INIT ---
+let selectedMemberName = null;
+let focusedResultIndex = -1;
+
+(function() {
+  const input = document.getElementById('member-search');
+  const results = document.getElementById('search-results');
+  const sorted = MEMBERS.slice().sort();
+
+  function renderResults(matches) {
+    focusedResultIndex = -1;
+    if (matches.length === 0) {
+      results.innerHTML = '<div class="search-no-results">No match found — check your spelling</div>';
+      results.classList.add('visible');
+      input.classList.add('has-match');
+      selectedMemberName = null;
+      document.getElementById('btn-enter').disabled = true;
+      return;
+    }
+    results.innerHTML = matches.slice(0, 8).map((name, i) =>
+      `<div class="search-result-item" data-name="${name}" data-index="${i}">${name}</div>`
+    ).join('');
+    results.classList.add('visible');
+    input.classList.add('has-match');
+    results.querySelectorAll('.search-result-item').forEach(item => {
+      item.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        selectMember(item.dataset.name);
+      });
+    });
+  }
+
+  function clearResults() {
+    results.classList.remove('visible');
+    input.classList.remove('has-match');
+    results.innerHTML = '';
+  }
+
+  function selectMember(name) {
+    selectedMemberName = name;
+    input.value = name;
+    clearResults();
+    document.getElementById('btn-enter').disabled = false;
+  }
+
+  input.addEventListener('input', () => {
+    const q = input.value.trim();
+    selectedMemberName = null;
+    document.getElementById('btn-enter').disabled = true;
+    if (q.length < 2) { clearResults(); return; }
+    const matches = sorted.filter(n => n.toLowerCase().includes(q.toLowerCase()));
+    if (matches.length === 0 || (matches.length === 1 && matches[0].toLowerCase() === q.toLowerCase())) {
+      if (matches.length === 1) { selectMember(matches[0]); return; }
+    }
+    renderResults(matches);
+  });
+
+  input.addEventListener('keydown', (e) => {
+    const items = results.querySelectorAll('.search-result-item');
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      focusedResultIndex = Math.min(focusedResultIndex + 1, items.length - 1);
+      items.forEach((el, i) => el.classList.toggle('focused', i === focusedResultIndex));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      focusedResultIndex = Math.max(focusedResultIndex - 1, 0);
+      items.forEach((el, i) => el.classList.toggle('focused', i === focusedResultIndex));
+    } else if (e.key === 'Enter' && focusedResultIndex >= 0 && items[focusedResultIndex]) {
+      selectMember(items[focusedResultIndex].dataset.name);
+    } else if (e.key === 'Escape') {
+      clearResults();
+    }
+  });
+
+  input.addEventListener('blur', () => {
+    setTimeout(clearResults, 150);
+  });
+})();
+
+async function enterDashboard() {
+  const name = selectedMemberName;
+  if (!name) return;
+  try {
+    const member = await apiGetOrCreateMember(name);
+    currentMember = name;
+    currentMemberId = member.id;
+  } catch(e) {
+    alert('Could not connect to the server. Please try again.');
+    return;
+  }
+  document.getElementById('screen-select').classList.remove('active');
+  document.getElementById('screen-dashboard').classList.add('active');
+  currentLift = 'Squat';
+  currentPBLift = 'Squat';
+  currentHistLift = 'Squat';
+  showNav('log');
+}
+
+function switchMember() {
+  document.getElementById('screen-dashboard').classList.remove('active');
+  document.getElementById('screen-select').classList.add('active');
+  document.getElementById('member-search').value = '';
+  document.getElementById('btn-enter').disabled = true;
+  selectedMemberName = null;
+  currentMember = null;
+  currentMemberId = null;
+}
+
+// --- NAV ---
+async function showNav(tab) {
+  document.querySelectorAll('.nav-tab').forEach((t,i) => {
+    t.classList.toggle('active', ['log','pbs','history'][i] === tab);
+  });
+  document.querySelectorAll('.sub-content').forEach(s => s.classList.remove('active'));
+  document.getElementById('nav-' + tab).classList.add('active');
+  if (tab === 'log') renderLogView();
+  if (tab === 'pbs') await renderPBView();
+  if (tab === 'history') await renderHistoryView();
+}
+
+// --- LOG VIEW ---
+let setCount = 0;
+
+function renderLogView() {
+  setCount = 0;
+  const list = document.getElementById('sets-list');
+  list.innerHTML = '';
+  document.getElementById('log-lift-label').textContent = currentLift + ' — log today\'s sets';
+  if (document.getElementById('log-lift-select')) document.getElementById('log-lift-select').value = currentLift;
+  hidePBBanner();
+  addSet();
+  addSet();
+  addSet();
+}
+
+function selectLift(lift) {
+  currentLift = lift;
+  const sel = document.getElementById('log-lift-select');
+  if (sel) sel.value = lift;
+  renderLogView();
+}
+
+function addSet() {
+  setCount++;
+  const list = document.getElementById('sets-list');
+  const row = document.createElement('div');
+  row.className = 'set-row';
+  row.dataset.setId = setCount;
+  row.innerHTML = `
+    <div class="set-label">S${setCount}</div>
+    <div class="set-input-wrap">
+      <input class="set-input" type="number" step="0.5" min="0" placeholder="0" inputmode="decimal">
+      <span class="set-unit">kg</span>
+    </div>
+    <div class="set-input-wrap">
+      <input class="set-input" type="number" min="1" max="50" placeholder="0" inputmode="numeric">
+      <span class="set-unit">reps</span>
+    </div>
+    <button class="btn-remove" onclick="removeSet(this)" title="Remove set">×</button>
+  `;
+  list.appendChild(row);
+}
+
+function removeSet(btn) {
+  const row = btn.closest('.set-row');
+  row.remove();
+  renumberSets();
+}
+
+function renumberSets() {
+  document.querySelectorAll('.set-row').forEach((row, i) => {
+    row.querySelector('.set-label').textContent = 'S' + (i + 1);
+  });
+}
+
+async function logSession() {
+  const rows = document.querySelectorAll('.set-row');
+  const sets = [];
+  rows.forEach(row => {
+    const inputs = row.querySelectorAll('input');
+    const kg = parseFloat(inputs[0].value);
+    const reps = parseInt(inputs[1].value);
+    if (!isNaN(kg) && kg > 0 && !isNaN(reps) && reps > 0) {
+      sets.push({ kg, reps });
+    }
+  });
+
+  if (sets.length === 0) {
+    alert('Please enter at least one complete set before saving.');
+    return;
+  }
+
+  const comments = document.getElementById('session-comments').value.trim();
+  const date = new Date().toISOString().split('T')[0];
+
+  try {
+    const result = await apiSaveSession(currentMemberId, currentLift, sets, comments, date);
+    if (result.isPB) {
+      showPBBanner(result.bestSet);
+    } else {
+      showSavedConfirmation();
+    }
+  } catch(e) {
+    alert('Could not save session. Please check your connection and try again.');
+    return;
+  }
+
+  const list = document.getElementById('sets-list');
+  list.innerHTML = '';
+  setCount = 0;
+  document.getElementById('session-comments').value = '';
+  addSet(); addSet(); addSet();
+}
+
+function showPBBanner(best) {
+  const banner = document.getElementById('pb-banner');
+  document.getElementById('pb-banner-title').textContent = '🏆 New personal best!';
+  document.getElementById('pb-banner-detail').textContent =
+    `${currentLift}: ${best.kg}kg × ${best.reps} rep${best.reps !== 1 ? 's' : ''} — estimated 1RM ${Math.round(best.est1rm)}kg`;
+  banner.classList.add('visible');
+  setTimeout(() => banner.classList.remove('visible'), 6000);
+}
+
+function hidePBBanner() {
+  document.getElementById('pb-banner').classList.remove('visible');
+}
+
+function showSavedConfirmation() {
+  const banner = document.getElementById('pb-banner');
+  document.getElementById('pb-banner-title').textContent = '✓ Session saved';
+  document.getElementById('pb-banner-detail').textContent = `${currentLift} — ${new Date().toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'})}`;
+  banner.style.background = '#F0FDF4';
+  banner.style.borderColor = '#86EFAC';
+  banner.querySelector('.pb-banner-title').style.color = '#16A34A';
+  banner.querySelector('.pb-banner-detail').style.color = '#166534';
+  banner.classList.add('visible');
+  setTimeout(() => {
+    banner.classList.remove('visible');
+    banner.style.background = '';
+    banner.style.borderColor = '';
+    banner.querySelector('.pb-banner-title').style.color = '';
+    banner.querySelector('.pb-banner-detail').style.color = '';
+  }, 3000);
+}
+
+// --- PB VIEW ---
+function selectPBLift(lift) {
+  currentPBLift = lift;
+  if (document.getElementById('pb-lift-select')) document.getElementById('pb-lift-select').value = lift;
+  renderPBView();
+}
+
+async function renderPBView() {
+  document.getElementById('pb-lift-label').textContent = currentPBLift;
+  let sessions;
+  try {
+    sessions = await apiGetSessions(currentMemberId, currentPBLift);
+  } catch(e) {
+    return;
+  }
+
+  const KPI_REPS = [1, 3, 5, 8, 10];
+
+  let overallBest = null;
+  sessions.forEach(s => {
+    const b = bestSet(s.sets);
+    if (b && (overallBest === null || b.est1rm > overallBest.est1rm)) {
+      overallBest = { ...b, date: s.date };
+    }
+  });
+
+  const achievedBests = {};
+  KPI_REPS.forEach(r => { achievedBests[r] = null; });
+  sessions.forEach(s => {
+    s.sets.forEach(set => {
+      if (KPI_REPS.includes(set.reps)) {
+        if (!achievedBests[set.reps] || set.kg > achievedBests[set.reps].kg) {
+          achievedBests[set.reps] = { kg: set.kg, date: s.date };
+        }
+      }
+    });
+  });
+
+  const achievedEl = document.getElementById('pb-achieved');
+  if (!overallBest) {
+    achievedEl.innerHTML = '<div class="empty-state">No sessions logged yet for ' + currentPBLift + '.</div>';
+    document.getElementById('pb-rm-table').innerHTML = '<div class="empty-state">Log at least one session to see predictions.</div>';
+    document.getElementById('rm-disclaimer').style.display = 'none';
+    renderPBChart([]);
+    return;
+  }
+
+  const achievedRows = KPI_REPS.map(r => {
+    const a = achievedBests[r];
+    return `<tr>
+      <td class="rm-label">${r}RM</td>
+      <td>${a ? `<span class="rm-kg">${a.kg.toFixed(1)}</span><span class="rm-kg-unit">kg</span>` : '<span style="color:var(--gray-400);font-size:13px">not logged</span>'}</td>
+      <td class="rm-basis">${a ? formatDate(a.date) : ''}</td>
+    </tr>`;
+  }).join('');
+
+  achievedEl.innerHTML = `
+    <div class="rm-table-wrap">
+      <table class="rm-table">
+        <thead><tr><th>Target</th><th>Best weight</th><th>Date</th></tr></thead>
+        <tbody>${achievedRows}</tbody>
+      </table>
+    </div>
+    <p style="font-size:11px;color:var(--gray-400);margin-top:8px">Only sets logged at exactly 1, 3, 5, 8, or 10 reps are shown here.</p>
+  `;
+
+  const targets = [1, 3, 5, 8, 10];
+  const rows = targets.map(t => {
+    const kg = brzyckiTarget(overallBest.est1rm, t);
+    const rounded = Math.round(kg * 2) / 2;
+    return `<tr>
+      <td class="rm-label">${t}RM</td>
+      <td><span class="rm-kg">${rounded.toFixed(1)}</span><span class="rm-kg-unit">kg</span></td>
+      <td class="rm-basis">${t === 1 ? 'true max' : 'prediction'}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('pb-rm-table').innerHTML = `
+    <div class="rm-table-wrap">
+      <table class="rm-table">
+        <thead><tr><th>Target</th><th>Est. weight</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+  document.getElementById('rm-disclaimer').style.display = 'block';
+
+  const chartData = sessions.slice().reverse().map(s => {
+    const b = bestSet(s.sets);
+    return { date: s.date, est1rm: b ? Math.round(b.est1rm) : null };
+  }).filter(d => d.est1rm !== null);
+  renderPBChart(chartData);
+}
+
+function renderPBChart(data) {
+  const canvas = document.getElementById('pb-chart');
+  const emptyEl = document.getElementById('chart-empty');
+
+  if (pbChart) { pbChart.destroy(); pbChart = null; }
+
+  if (data.length < 2) {
+    canvas.style.display = 'none';
+    emptyEl.style.display = 'block';
+    return;
+  }
+
+  canvas.style.display = 'block';
+  emptyEl.style.display = 'none';
+
+  pbChart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: data.map(d => formatDate(d.date)),
+      datasets: [{
+        data: data.map(d => d.est1rm),
+        borderColor: '#7C10F9',
+        backgroundColor: 'rgba(124,16,249,0.08)',
+        borderWidth: 2,
+        pointBackgroundColor: '#7C10F9',
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        fill: true,
+        tension: 0.3
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: {
+        callbacks: { label: ctx => `Est. 1RM: ${ctx.raw}kg` }
+      }},
+      scales: {
+        y: {
+          grid: { color: 'rgba(0,0,0,0.05)' },
+          ticks: { font: { size: 11 }, callback: v => v + 'kg' }
+        },
+        x: { grid: { display: false }, ticks: { font: { size: 11 }, maxRotation: 0 } }
+      }
+    }
+  });
+}
+
+// --- HISTORY VIEW ---
+function selectHistLift(lift) {
+  currentHistLift = lift;
+  renderHistoryView();
+}
+
+async function renderHistoryView() {
+  const container = document.getElementById('history-list');
+  let sessions;
+  try {
+    sessions = await apiGetSessions(currentMemberId, currentHistLift);
+  } catch(e) {
+    return;
+  }
+
+  if (sessions.length === 0) {
+    container.innerHTML = '<div class="empty-state">No sessions logged yet for ' + currentHistLift + '.<br>Head to "Log lift" to add your first.</div>';
+    return;
+  }
+
+  const allBests = sessions.map(s => bestSet(s.sets)).filter(Boolean);
+  const overallBestEst = allBests.length ? Math.max(...allBests.map(b => b.est1rm)) : 0;
+
+  container.innerHTML = sessions.map(s => {
+    const b = bestSet(s.sets);
+    const setPills = s.sets.map(set => {
+      const isTopSet = b && set.kg === b.kg && set.reps === b.reps;
+      return `<span class="set-pill${isTopSet ? ' best' : ''}">${set.kg}kg × ${set.reps}</span>`;
+    }).join('');
+    const commentsHtml = s.comments
+      ? `<div class="history-comments">"${s.comments}"</div>`
+      : '';
+    return `<div>
+      <div class="history-item">
+        <div>
+          <div class="history-date">${formatDate(s.date)}</div>
+          <div class="history-lift">${currentHistLift}</div>
+          <div class="history-sets">${setPills}</div>
+        </div>
+        ${s.isPB ? '<span class="pb-badge">🏆 PB</span>' : ''}
+      </div>
+      ${commentsHtml}
+    </div>`;
+  }).join('');
+}
+
+// --- UTILS ---
+function formatDate(iso) {
+  const [y,m,d] = iso.split('-');
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${parseInt(d)} ${months[parseInt(m)-1]} ${y}`;
+}
+</script>
+</body>
+</html>
