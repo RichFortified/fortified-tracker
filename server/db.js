@@ -2,7 +2,8 @@ const { createClient } = require('@libsql/client');
 const path = require('path');
 const fs = require('fs');
 
-const DB_URL = process.env.DATABASE_URL || `file:${path.join(__dirname, '..', 'fortified.db')}`;
+const DB_URL = process.env.DATABASE_URL ||
+  (process.env.NODE_ENV === 'production' ? 'file:/data/fortified.db' : `file:${path.join(__dirname, '..', 'fortified.db')}`);
 
 // Ensure the parent directory exists — required when Railway mounts a volume at /data
 if (DB_URL.startsWith('file:')) {
