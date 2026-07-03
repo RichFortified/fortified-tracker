@@ -2,12 +2,17 @@ const { createClient } = require('@libsql/client');
 const path = require('path');
 const fs = require('fs');
 
-const DB_URL = process.env.DATABASE_URL ||
-  (process.env.NODE_ENV === 'production' ? 'file:/data/fortified.db' : `file:${path.join(__dirname, '..', 'fortified.db')}`);
+const DB_URL = process.env.DATABASE_URL || 'file:/data/fortified.db';
+
+console.log(`Database path: ${DB_URL}`);
 
 // Ensure the parent directory exists — required when Railway mounts a volume at /data
 if (DB_URL.startsWith('file:')) {
-  fs.mkdirSync(path.dirname(DB_URL.slice(5)), { recursive: true });
+  try {
+    fs.mkdirSync(path.dirname(DB_URL.slice(5)), { recursive: true });
+  } catch (e) {
+    console.warn(`Warning: could not create database directory: ${e.message}`);
+  }
 }
 
 const db = createClient({ url: DB_URL });
