@@ -1,51 +1,37 @@
-const { createClient } = require('@libsql/client');
-const path = require('path');
-const fs = require('fs');
+const { Pool } = require('pg');
 
-const DB_URL = process.env.DATABASE_URL || 'file:/data/fortified.db';
-
-console.log(`Database path: ${DB_URL}`);
-
-// Ensure the parent directory exists — required when Railway mounts a volume at /data
-if (DB_URL.startsWith('file:')) {
-  try {
-    fs.mkdirSync(path.dirname(DB_URL.slice(5)), { recursive: true });
-  } catch (e) {
-    console.warn(`Warning: could not create database directory: ${e.message}`);
-  }
-}
-
-const db = createClient({ url: DB_URL });
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 async function init() {
-  await db.executeMultiple(`
-    PRAGMA journal_mode = WAL;
-    PRAGMA foreign_keys = ON;
-
+  await pool.query('CREATE EXTENSION IF NOT EXISTS citext');
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS members (
-      id   INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL UNIQUE COLLATE NOCASE
-    );
-
+      id   SERIAL PRIMARY KEY,
+      name CITEXT NOT NULL UNIQUE
+    )
+  `);
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS sessions (
-      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      id         SERIAL PRIMARY KEY,
       member_id  INTEGER NOT NULL REFERENCES members(id) ON DELETE CASCADE,
       lift       TEXT    NOT NULL,
       date       TEXT    NOT NULL,
       is_pb      INTEGER NOT NULL DEFAULT 0,
       comments   TEXT    NOT NULL DEFAULT '',
-      logged_at  TEXT    NOT NULL DEFAULT (datetime('now'))
-    );
-
+      logged_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS sets (
-      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      id         SERIAL PRIMARY KEY,
       session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
       kg         REAL    NOT NULL,
       reps       INTEGER NOT NULL
-    );
-
-    CREATE INDEX IF NOT EXISTS idx_sessions_member_lift ON sessions(member_id, lift);
+    )
+  `);
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_sessions_member_lift ON sessions(member_id, lift)
   `);
 }
 
-module.exports = { db, init };
+module.exports = { pool, init };

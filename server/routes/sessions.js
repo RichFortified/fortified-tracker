@@ -1,5 +1,5 @@
 const express = require('express');
-const { db } = require('../db');
+const { pool } = require('../db');
 const router = express.Router();
 
 function brzycki1RM(kg, reps) {
@@ -26,24 +26,24 @@ router.get('/', async (req, res) => {
     return res.status(400).json({ error: 'member_id and lift are required' });
   }
 
-  const sessionsResult = await db.execute({
-    sql: `SELECT id, date, is_pb, comments
-          FROM sessions
-          WHERE member_id = ? AND lift = ?
-          ORDER BY date DESC, logged_at DESC`,
-    args: [member_id, lift],
-  });
+  const sessionsResult = await pool.query(
+    `SELECT id, date, is_pb, comments
+     FROM sessions
+     WHERE member_id = $1 AND lift = $2
+     ORDER BY date DESC, logged_at DESC`,
+    [member_id, lift]
+  );
 
   const sessions = [];
   for (const row of sessionsResult.rows) {
-    const setsResult = await db.execute({
-      sql: 'SELECT kg, reps FROM sets WHERE session_id = ? ORDER BY id ASC',
-      args: [row.id],
-    });
+    const setsResult = await pool.query(
+      'SELECT kg, reps FROM sets WHERE session_id = $1 ORDER BY id ASC',
+      [row.id]
+    );
     sessions.push({
       id: Number(row.id),
       date: row.date,
-      isPB: row.is_pb === 1,
+      isPB: Number(row.is_pb) === 1,
       comments: row.comments || '',
       sets: setsResult.rows.map(s => ({ kg: Number(s.kg), reps: Number(s.reps) })),
     });
@@ -61,33 +61,43 @@ router.post('/', async (req, res) => {
   }
 
   // Fetch all previous sets for this member+lift to determine PB
-  const prevResult = await db.execute({
-    sql: `SELECT s.kg, s.reps
-          FROM sets s
-          JOIN sessions sess ON s.session_id = sess.id
-          WHERE sess.member_id = ? AND sess.lift = ?`,
-    args: [member_id, lift],
-  });
+  const prevResult = await pool.query(
+    `SELECT s.kg, s.reps
+     FROM sets s
+     JOIN sessions sess ON s.session_id = sess.id
+     WHERE sess.member_id = $1 AND sess.lift = $2`,
+    [member_id, lift]
+  );
 
   const prevBest = bestSet(prevResult.rows);
   const newBest = bestSet(sets);
   const isPB = newBest !== null && (prevBest === null || newBest.est1rm > prevBest.est1rm);
 
-  // Insert the session row first to get a stable ID
-  const sessionResult = await db.execute({
-    sql: 'INSERT INTO sessions (member_id, lift, date, is_pb, comments) VALUES (?, ?, ?, ?, ?)',
-    args: [member_id, lift, date, isPB ? 1 : 0, comments || ''],
-  });
-  const sessionId = Number(sessionResult.lastInsertRowid);
+  const client = await pool.connect();
+  let sessionId;
+  try {
+    await client.query('BEGIN');
 
-  // Batch insert all sets using the known session ID
-  await db.batch(
-    sets.map(s => ({
-      sql: 'INSERT INTO sets (session_id, kg, reps) VALUES (?, ?, ?)',
-      args: [sessionId, s.kg, s.reps],
-    })),
-    'write'
-  );
+    const sessionResult = await client.query(
+      'INSERT INTO sessions (member_id, lift, date, is_pb, comments) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+      [member_id, lift, date, isPB ? 1 : 0, comments || '']
+    );
+    sessionId = sessionResult.rows[0].id;
+
+    for (const s of sets) {
+      await client.query(
+        'INSERT INTO sets (session_id, kg, reps) VALUES ($1, $2, $3)',
+        [sessionId, s.kg, s.reps]
+      );
+    }
+
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 
   res.status(201).json({ id: sessionId, isPB, bestSet: newBest });
 });
