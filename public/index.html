@@ -730,12 +730,108 @@
     .set-row { grid-template-columns: 34px 1fr 1fr auto; }
     .set-headers { grid-template-columns: 34px 1fr 1fr auto; }
   }
+
+  /* LOGIN SCREEN */
+  .login-screen {
+    max-width: 420px;
+    margin: 0 auto;
+    padding: 48px 24px 24px;
+    text-align: center;
+  }
+
+  .login-screen h1 {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--black);
+    margin-bottom: 8px;
+  }
+
+  .login-screen p {
+    font-size: 15px;
+    color: var(--gray-600);
+    margin-bottom: 32px;
+    line-height: 1.5;
+  }
+
+  .login-name-select {
+    width: 100%;
+    padding: 14px 16px;
+    font-size: 16px;
+    font-family: inherit;
+    border: 1.5px solid var(--gray-200);
+    border-radius: var(--radius);
+    background: var(--white);
+    color: var(--black);
+    appearance: none;
+    cursor: pointer;
+    transition: border-color 0.15s;
+    margin-bottom: 16px;
+  }
+
+  .login-name-select:focus {
+    outline: none;
+    border-color: var(--purple);
+  }
+
+  .login-status {
+    margin-top: 16px;
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 20px;
+    color: var(--gray-600);
+  }
+
+  .login-status.error   { color: #dc2626; }
+  .login-status.success { color: #16A34A; }
+
+  /* AUTH BAR */
+  .auth-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: var(--white);
+    border-bottom: 1px solid var(--gray-100);
+  }
+
+  .auth-bar-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--black);
+  }
+
+  .btn-signout {
+    background: none;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-sm);
+    padding: 5px 10px;
+    font-size: 12px;
+    font-family: inherit;
+    color: var(--gray-600);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-signout:hover { border-color: var(--black); color: var(--black); }
 </style>
 </head>
 <body>
 
+<!-- LOGIN SCREEN -->
+<div id="screen-login" class="screen active">
+  <div class="login-screen">
+    <h1>Fortified Tracker</h1>
+    <p>Select your name and we'll send a login link to your email address.</p>
+    <select id="login-name-select" class="login-name-select">
+      <option value="">— Choose your name —</option>
+    </select>
+    <button class="btn-primary" id="btn-send-link" onclick="requestLogin()">Send login link</button>
+    <div id="login-status" class="login-status"></div>
+  </div>
+</div>
+
 <!-- MEMBER SELECT SCREEN -->
-<div id="screen-select" class="screen active">
+<div id="screen-select" class="screen">
     <div class="select-screen">
     <h1>Lift Tracker</h1>
     <p>Type your name to find your records and log today's lifts.</p>
@@ -749,6 +845,12 @@
 
 <!-- DASHBOARD SCREEN -->
 <div id="screen-dashboard" class="screen">
+
+  <!-- AUTH BAR -->
+  <div class="auth-bar">
+    <span class="auth-bar-name" id="auth-bar-name"></span>
+    <button class="btn-signout" onclick="signOut()">Sign out</button>
+  </div>
 
   <!-- NAV -->
   <div class="nav-tabs">
@@ -849,6 +951,12 @@ const LIFTS = ['Alternating Lunge','Bench Press','Deadlift','Incline Bench Press
   ['log-lift-select', 'pb-lift-select', 'hist-lift-select'].forEach(id => {
     document.getElementById(id).innerHTML = opts;
   });
+})();
+
+(function() {
+  const base = '<option value="">— Choose your name —</option>';
+  const opts = MEMBERS.map(m => `<option value="${m}">${m}</option>`).join('');
+  document.getElementById('login-name-select').innerHTML = base + opts;
 })();
 
 let currentMember = null;
@@ -1385,6 +1493,87 @@ function formatDate(iso) {
   return `${parseInt(d)} ${months[parseInt(m)-1]} ${y}`;
 }
 
+// --- AUTH ---
+function showLoginScreen(message) {
+  document.getElementById('screen-login').classList.add('active');
+  document.getElementById('screen-select').classList.remove('active');
+  document.getElementById('screen-dashboard').classList.remove('active');
+  const status = document.getElementById('login-status');
+  if (message) {
+    status.textContent = message;
+    status.className = 'login-status error';
+  } else {
+    status.textContent = '';
+    status.className = 'login-status';
+  }
+  document.getElementById('btn-send-link').disabled = false;
+}
+
+async function enterAuthenticatedDashboard(name, memberId) {
+  currentMember = name;
+  currentMemberId = memberId;
+  document.getElementById('auth-bar-name').textContent = name;
+
+  const raw = localStorage.getItem('fortified_draft');
+  let draft = null;
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Number(parsed.memberId) === Number(memberId)) draft = parsed;
+      else localStorage.removeItem('fortified_draft');
+    } catch(e) { localStorage.removeItem('fortified_draft'); }
+  }
+
+  currentLift = (draft && draft.lift) || 'Squat';
+  document.getElementById('screen-login').classList.remove('active');
+  document.getElementById('screen-select').classList.remove('active');
+  document.getElementById('screen-dashboard').classList.add('active');
+  document.querySelectorAll('.nav-tab').forEach((t, i) => t.classList.toggle('active', i === 0));
+  document.querySelectorAll('.sub-content').forEach(s => s.classList.remove('active'));
+  document.getElementById('nav-log').classList.add('active');
+  syncDropdowns();
+  renderLogView(draft);
+}
+
+async function requestLogin() {
+  const select = document.getElementById('login-name-select');
+  const name = select.value;
+  if (!name) return;
+  const btn = document.getElementById('btn-send-link');
+  const status = document.getElementById('login-status');
+  btn.disabled = true;
+  status.className = 'login-status';
+  status.textContent = 'Sending…';
+  try {
+    const res = await fetch('/api/auth/request-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    if (res.ok) {
+      status.textContent = `Login link sent — check your email inbox.`;
+      status.className = 'login-status success';
+    } else {
+      const data = await res.json().catch(() => ({}));
+      status.textContent = data.error || 'Something went wrong. Please try again.';
+      status.className = 'login-status error';
+      btn.disabled = false;
+    }
+  } catch(e) {
+    status.textContent = 'Could not connect. Please check your connection and try again.';
+    status.className = 'login-status error';
+    btn.disabled = false;
+  }
+}
+
+async function signOut() {
+  localStorage.removeItem('fortified_draft');
+  try { await fetch('/api/auth/logout', { method: 'POST' }); } catch(e) {}
+  currentMember = null;
+  currentMemberId = null;
+  showLoginScreen();
+}
+
 // --- DRAFT ---
 function saveDraft() {
   if (!currentMemberId) return;
@@ -1403,24 +1592,31 @@ function saveDraft() {
   }));
 }
 
-(async function restoreDraft() {
-  const raw = localStorage.getItem('fortified_draft');
-  if (!raw) return;
-  let draft;
-  try { draft = JSON.parse(raw); } catch(e) { localStorage.removeItem('fortified_draft'); return; }
-  if (!draft.memberName) return;
-  let member;
-  try { member = await apiGetOrCreateMember(draft.memberName); } catch(e) { return; }
-  currentMember = draft.memberName;
-  currentMemberId = member.id;
-  currentLift = draft.lift || 'Squat';
-  document.getElementById('screen-select').classList.remove('active');
-  document.getElementById('screen-dashboard').classList.add('active');
-  document.querySelectorAll('.nav-tab').forEach((t, i) => t.classList.toggle('active', i === 0));
-  document.querySelectorAll('.sub-content').forEach(s => s.classList.remove('active'));
-  document.getElementById('nav-log').classList.add('active');
-  syncDropdowns();
-  renderLogView(draft);
+(async function initApp() {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('token');
+  if (token) {
+    window.history.replaceState({}, '', '/');
+    try {
+      const res = await fetch(`/api/auth/verify?token=${encodeURIComponent(token)}`);
+      if (res.ok) {
+        const data = await res.json();
+        await enterAuthenticatedDashboard(data.name, data.memberId);
+        return;
+      }
+    } catch(e) {}
+    showLoginScreen('That login link has expired or has already been used. Please request a new one.');
+    return;
+  }
+  try {
+    const res = await fetch('/api/auth/me');
+    if (res.ok) {
+      const data = await res.json();
+      await enterAuthenticatedDashboard(data.name, data.memberId);
+      return;
+    }
+  } catch(e) {}
+  showLoginScreen();
 })();
 </script>
 </body>

@@ -1,15 +1,23 @@
-const express = require('express');
-const path = require('path');
-const { init } = require('./db');
+const express      = require('express');
+const path         = require('path');
+const cookieParser = require('cookie-parser');
+const { init }     = require('./db');
 
-const app = express();
+const app  = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
+app.use(cookieParser(process.env.SESSION_SECRET));
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
-app.use('/api/members', require('./routes/members'));
+app.use('/api/auth',     require('./routes/auth'));
+app.use('/api/members',  require('./routes/members'));
 app.use('/api/sessions', require('./routes/sessions'));
+
+// Serve index.html for any non-API route (handles /auth?token=... magic links)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
+});
 
 init().then(() => {
   app.listen(PORT, () => {
