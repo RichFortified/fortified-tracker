@@ -559,6 +559,71 @@
   .pb-history-kg { font-weight: 700; color: var(--purple); font-size: 16px; }
   .pb-history-meta { color: var(--gray-400); font-size: 12px; }
 
+  /* HISTORY DELETE */
+  .history-item-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .btn-delete-session {
+    background: none;
+    border: none;
+    color: var(--gray-400);
+    cursor: pointer;
+    font-size: 12px;
+    font-family: inherit;
+    padding: 2px 0;
+    transition: color 0.15s;
+  }
+
+  .btn-delete-session:hover { color: #dc2626; }
+
+  .delete-confirm-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: #FEF2F2;
+    border: 1px solid #FECACA;
+    border-top: none;
+    border-radius: 0 0 var(--radius) var(--radius);
+    font-size: 13px;
+    color: var(--gray-600);
+    margin-top: -2px;
+  }
+
+  .btn-confirm-delete {
+    padding: 4px 12px;
+    background: #dc2626;
+    color: var(--white);
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+
+  .btn-confirm-delete:hover { opacity: 0.88; }
+
+  .btn-cancel-delete {
+    padding: 4px 12px;
+    background: none;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-family: inherit;
+    color: var(--gray-600);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-cancel-delete:hover { border-color: var(--black); color: var(--black); }
+
   /* SWITCH MEMBER */
   .btn-switch {
     background: none;
@@ -1265,18 +1330,45 @@ async function renderHistoryView() {
     const commentsHtml = s.comments
       ? `<div class="history-comments">"${s.comments}"</div>`
       : '';
-    return `<div>
+    return `<div id="session-${s.id}">
       <div class="history-item">
         <div>
           <div class="history-date">${formatDate(s.date)}</div>
           <div class="history-lift">${currentLift}</div>
           <div class="history-sets">${setPills}</div>
         </div>
-        ${s.isPB ? '<span class="pb-badge">🏆 PB</span>' : ''}
+        <div class="history-item-right">
+          ${s.isPB ? '<span class="pb-badge">🏆 PB</span>' : ''}
+          <button class="btn-delete-session" onclick="showDeleteConfirm(${s.id})">Delete</button>
+        </div>
+      </div>
+      <div class="delete-confirm-row" id="delete-confirm-${s.id}" style="display:none">
+        <span>Delete this session?</span>
+        <button class="btn-confirm-delete" onclick="confirmDeleteSession(${s.id})">Yes, delete</button>
+        <button class="btn-cancel-delete" onclick="cancelDeleteSession(${s.id})">Cancel</button>
       </div>
       ${commentsHtml}
     </div>`;
   }).join('');
+}
+
+function showDeleteConfirm(id) {
+  document.getElementById('delete-confirm-' + id).style.display = 'flex';
+}
+
+function cancelDeleteSession(id) {
+  document.getElementById('delete-confirm-' + id).style.display = 'none';
+}
+
+async function confirmDeleteSession(id) {
+  try {
+    const res = await fetch('/api/sessions/' + id, { method: 'DELETE' });
+    if (!res.ok) throw new Error();
+  } catch(e) {
+    alert('Could not delete session. Please try again.');
+    return;
+  }
+  await renderHistoryView();
 }
 
 // --- UTILS ---

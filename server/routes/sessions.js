@@ -102,4 +102,14 @@ router.post('/', async (req, res) => {
   res.status(201).json({ id: sessionId, isPB, bestSet: newBest });
 });
 
+// DELETE /api/sessions/:id  (sets are removed automatically via ON DELETE CASCADE)
+router.delete('/:id', async (req, res) => {
+  const { id } = req.params;
+  const result = await pool.query('DELETE FROM sessions WHERE id = $1', [id]);
+  if (result.rowCount === 0) {
+    return res.status(404).json({ error: 'Session not found' });
+  }
+  res.status(204).send();
+});
+
 module.exports = router;
