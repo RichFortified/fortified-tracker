@@ -773,6 +773,40 @@
 
   .login-email-input::placeholder { color: var(--gray-400); }
 
+  .code-input {
+    width: 100%;
+    padding: 14px 16px;
+    font-size: 32px;
+    font-family: 'Courier New', monospace;
+    font-weight: 700;
+    letter-spacing: 10px;
+    text-align: center;
+    border: 1.5px solid var(--gray-200);
+    border-radius: var(--radius);
+    background: var(--white);
+    color: var(--black);
+    transition: border-color 0.15s;
+    margin-bottom: 16px;
+  }
+
+  .code-input:focus {
+    outline: none;
+    border-color: var(--purple);
+  }
+
+  .code-input::placeholder { color: var(--gray-200); letter-spacing: 10px; }
+
+  .login-back-link {
+    display: inline-block;
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--gray-400);
+    text-decoration: underline;
+    cursor: pointer;
+  }
+
+  .login-back-link:hover { color: var(--black); }
+
   .login-status {
     margin-top: 16px;
     font-size: 14px;
@@ -817,14 +851,26 @@
 </head>
 <body>
 
-<!-- LOGIN SCREEN -->
+<!-- STEP 1: EMAIL SCREEN -->
 <div id="screen-login" class="screen active">
   <div class="login-screen">
     <h1>Fortified Tracker</h1>
-    <p>Enter your email address and we'll send you a login link.</p>
+    <p>Enter your email address and we'll send you a 6-digit login code.</p>
     <input type="email" id="login-email-input" class="login-email-input" placeholder="your@email.com" autocomplete="email" autocorrect="off" autocapitalize="none" onkeydown="if(event.key==='Enter')requestLogin()">
-    <button class="btn-primary" id="btn-send-link" onclick="requestLogin()">Send login link</button>
-    <div id="login-status" class="login-status"></div>
+    <button class="btn-primary" id="btn-send-code" onclick="requestLogin()">Send Code</button>
+    <div id="email-status" class="login-status"></div>
+  </div>
+</div>
+
+<!-- STEP 2: CODE ENTRY SCREEN -->
+<div id="screen-code" class="screen">
+  <div class="login-screen">
+    <h1>Fortified Tracker</h1>
+    <p>We've sent a 6-digit code to <strong id="code-email-display"></strong>. Enter it below.</p>
+    <input type="text" id="login-code-input" class="code-input" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code" onkeydown="if(event.key==='Enter')verifyCode()">
+    <button class="btn-primary" id="btn-verify-code" onclick="verifyCode()">Verify</button>
+    <div id="code-status" class="login-status"></div>
+    <span class="login-back-link" onclick="startAgain()">Start again</span>
   </div>
 </div>
 
@@ -1487,13 +1533,16 @@ function formatDate(iso) {
 }
 
 // --- AUTH ---
+let pendingEmail = '';
+
 function showLoginScreen(message) {
   document.getElementById('screen-login').classList.add('active');
+  document.getElementById('screen-code').classList.remove('active');
   document.getElementById('screen-select').classList.remove('active');
   document.getElementById('screen-dashboard').classList.remove('active');
   document.getElementById('login-email-input').value = '';
-  document.getElementById('btn-send-link').disabled = false;
-  const status = document.getElementById('login-status');
+  document.getElementById('btn-send-code').disabled = false;
+  const status = document.getElementById('email-status');
   if (message) {
     status.textContent = message;
     status.className = 'login-status error';
@@ -1501,6 +1550,7 @@ function showLoginScreen(message) {
     status.textContent = '';
     status.className = 'login-status';
   }
+  pendingEmail = '';
 }
 
 async function enterAuthenticatedDashboard(name, memberId) {
@@ -1520,6 +1570,7 @@ async function enterAuthenticatedDashboard(name, memberId) {
 
   currentLift = (draft && draft.lift) || 'Squat';
   document.getElementById('screen-login').classList.remove('active');
+  document.getElementById('screen-code').classList.remove('active');
   document.getElementById('screen-select').classList.remove('active');
   document.getElementById('screen-dashboard').classList.add('active');
   document.querySelectorAll('.nav-tab').forEach((t, i) => t.classList.toggle('active', i === 0));
@@ -1530,11 +1581,10 @@ async function enterAuthenticatedDashboard(name, memberId) {
 }
 
 async function requestLogin() {
-  const input = document.getElementById('login-email-input');
-  const email = input.value.trim();
+  const email = document.getElementById('login-email-input').value.trim();
   if (!email) return;
-  const btn = document.getElementById('btn-send-link');
-  const status = document.getElementById('login-status');
+  const btn    = document.getElementById('btn-send-code');
+  const status = document.getElementById('email-status');
   btn.disabled = true;
   status.className = 'login-status';
   status.textContent = 'Sending…';
@@ -1545,8 +1595,15 @@ async function requestLogin() {
       body: JSON.stringify({ email }),
     });
     if (res.ok) {
-      status.textContent = `Login link sent — check your email inbox.`;
-      status.className = 'login-status success';
+      pendingEmail = email;
+      document.getElementById('code-email-display').textContent = email;
+      document.getElementById('login-code-input').value = '';
+      document.getElementById('code-status').textContent = '';
+      document.getElementById('code-status').className = 'login-status';
+      document.getElementById('btn-verify-code').disabled = false;
+      document.getElementById('screen-login').classList.remove('active');
+      document.getElementById('screen-code').classList.add('active');
+      setTimeout(() => document.getElementById('login-code-input').focus(), 50);
     } else {
       const data = await res.json().catch(() => ({}));
       status.textContent = data.error || 'Something went wrong. Please try again.';
@@ -1554,10 +1611,43 @@ async function requestLogin() {
       btn.disabled = false;
     }
   } catch(e) {
-    status.textContent = 'Could not connect. Please check your connection and try again.';
+    status.textContent = 'Could not connect. Please try again.';
     status.className = 'login-status error';
     btn.disabled = false;
   }
+}
+
+async function verifyCode() {
+  const code = document.getElementById('login-code-input').value.trim();
+  if (!code || !pendingEmail) return;
+  const btn    = document.getElementById('btn-verify-code');
+  const status = document.getElementById('code-status');
+  btn.disabled = true;
+  status.className = 'login-status';
+  status.textContent = 'Verifying…';
+  try {
+    const res = await fetch('/api/auth/verify-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: pendingEmail, code }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      await enterAuthenticatedDashboard(data.name, data.memberId);
+    } else {
+      status.textContent = "That code isn't right. Please check and try again.";
+      status.className = 'login-status error';
+      btn.disabled = false;
+    }
+  } catch(e) {
+    status.textContent = 'Could not connect. Please try again.';
+    status.className = 'login-status error';
+    btn.disabled = false;
+  }
+}
+
+function startAgain() {
+  showLoginScreen();
 }
 
 async function signOut() {
@@ -1587,21 +1677,6 @@ function saveDraft() {
 }
 
 (async function initApp() {
-  const params = new URLSearchParams(window.location.search);
-  const token = params.get('token');
-  if (token) {
-    window.history.replaceState({}, '', '/');
-    try {
-      const res = await fetch(`/api/auth/verify?token=${encodeURIComponent(token)}`);
-      if (res.ok) {
-        const data = await res.json();
-        await enterAuthenticatedDashboard(data.name, data.memberId);
-        return;
-      }
-    } catch(e) {}
-    showLoginScreen('That login link has expired or has already been used. Please request a new one.');
-    return;
-  }
   try {
     const res = await fetch('/api/auth/me');
     if (res.ok) {

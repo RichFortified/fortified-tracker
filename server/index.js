@@ -14,13 +14,7 @@ app.use('/api/auth',     require('./routes/auth'));
 app.use('/api/members',  require('./routes/members'));
 app.use('/api/sessions', require('./routes/sessions'));
 
-// Redirect magic links so the SPA loads before the JS picks up the token
-app.get('/auth', (req, res) => {
-  const token = req.query.token || '';
-  res.redirect('/?token=' + encodeURIComponent(token));
-});
-
-// Serve index.html for any other non-API route
+// Serve index.html for any non-API route
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
 });

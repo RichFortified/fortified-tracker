@@ -1,12 +1,10 @@
 const express = require('express');
-const crypto  = require('crypto');
 const { Resend } = require('resend');
 const { pool } = require('../db');
 
-const router  = express.Router();
+const router = express.Router();
 const resend  = new Resend(process.env.RESEND_API_KEY);
 const FROM    = process.env.FROM_EMAIL || 'noreply@tracker.fortifiedgym.com';
-const APP_URL = process.env.APP_URL    || 'https://fortified-tracker-v2-production.up.railway.app';
 const COOKIE  = 'session';
 
 // POST /api/auth/request-login  { email }
@@ -21,54 +19,55 @@ router.post('/request-login', async (req, res) => {
 
   const member = result.rows[0];
   if (!member) {
-    return res.status(404).json({ error: 'No account found with that email address' });
+    return res.status(404).json({ error: 'Email not found' });
   }
 
-  const token     = crypto.randomBytes(32).toString('hex');
+  const code      = Math.floor(100000 + Math.random() * 900000).toString();
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
   await pool.query(
     'INSERT INTO tokens (email, token, expires_at) VALUES ($1, $2, $3)',
-    [member.email, token, expiresAt]
+    [member.email, code, expiresAt]
   );
-
-  const link = `${APP_URL}/auth?token=${token}`;
 
   await resend.emails.send({
     from: FROM,
     to:   member.email,
-    subject: 'Your Fortified Tracker login link',
+    subject: 'Your Fortified Tracker code',
     html: `
       <p>Hi ${member.name},</p>
-      <p>Click the link below to sign in to Fortified Tracker. It expires in 15 minutes.</p>
-      <p><a href="${link}">${link}</a></p>
+      <p>Your login code is:</p>
+      <h2 style="letter-spacing: 8px; font-size: 36px;">${code}</h2>
+      <p>Enter this code in the Fortified Tracker to log in. It expires in 15 minutes.</p>
       <p>If you didn't request this, you can ignore this email.</p>
+      <p>— Fortified</p>
     `,
   });
 
-  res.json({ ok: true });
+  res.json({ message: 'Code sent' });
 });
 
-// GET /api/auth/verify?token=xxx
-router.get('/verify', async (req, res) => {
-  const { token } = req.query;
-  if (!token) return res.status(400).json({ error: 'Token required' });
+// POST /api/auth/verify-code  { email, code }
+router.post('/verify-code', async (req, res) => {
+  const email = (req.body.email || '').trim().toLowerCase();
+  const code  = (req.body.code  || '').trim();
+  if (!email || !code) return res.status(400).json({ error: 'Email and code are required' });
 
   const result = await pool.query(
-    'SELECT * FROM tokens WHERE token = $1',
-    [token]
+    'SELECT * FROM tokens WHERE LOWER(email) = $1 AND token = $2',
+    [email, code]
   );
 
   const row = result.rows[0];
-  if (!row)                       return res.status(401).json({ error: 'Invalid token' });
-  if (row.used)                   return res.status(401).json({ error: 'Token already used' });
-  if (new Date(row.expires_at) < new Date()) return res.status(401).json({ error: 'Token expired' });
+  if (!row || row.used || new Date(row.expires_at) < new Date()) {
+    return res.status(400).json({ error: 'Invalid or expired code' });
+  }
 
   await pool.query('UPDATE tokens SET used = TRUE WHERE id = $1', [row.id]);
 
   const memberResult = await pool.query(
-    'SELECT id, name FROM members WHERE email = $1',
-    [row.email]
+    'SELECT id, name FROM members WHERE LOWER(email) = $1',
+    [email]
   );
   const member = memberResult.rows[0];
   if (!member) return res.status(404).json({ error: 'Member not found' });
