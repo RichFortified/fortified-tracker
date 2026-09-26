@@ -753,7 +753,7 @@
     line-height: 1.5;
   }
 
-  .login-name-select {
+  .login-email-input {
     width: 100%;
     padding: 14px 16px;
     font-size: 16px;
@@ -762,16 +762,16 @@
     border-radius: var(--radius);
     background: var(--white);
     color: var(--black);
-    appearance: none;
-    cursor: pointer;
     transition: border-color 0.15s;
     margin-bottom: 16px;
   }
 
-  .login-name-select:focus {
+  .login-email-input:focus {
     outline: none;
     border-color: var(--purple);
   }
+
+  .login-email-input::placeholder { color: var(--gray-400); }
 
   .login-status {
     margin-top: 16px;
@@ -821,10 +821,8 @@
 <div id="screen-login" class="screen active">
   <div class="login-screen">
     <h1>Fortified Tracker</h1>
-    <p>Select your name and we'll send a login link to your email address.</p>
-    <select id="login-name-select" class="login-name-select">
-      <option value="">— Choose your name —</option>
-    </select>
+    <p>Enter your email address and we'll send you a login link.</p>
+    <input type="email" id="login-email-input" class="login-email-input" placeholder="your@email.com" autocomplete="email" autocorrect="off" autocapitalize="none" onkeydown="if(event.key==='Enter')requestLogin()">
     <button class="btn-primary" id="btn-send-link" onclick="requestLogin()">Send login link</button>
     <div id="login-status" class="login-status"></div>
   </div>
@@ -953,11 +951,6 @@ const LIFTS = ['Alternating Lunge','Bench Press','Deadlift','Incline Bench Press
   });
 })();
 
-(function() {
-  const base = '<option value="">— Choose your name —</option>';
-  const opts = MEMBERS.map(m => `<option value="${m}">${m}</option>`).join('');
-  document.getElementById('login-name-select').innerHTML = base + opts;
-})();
 
 let currentMember = null;
 let currentMemberId = null;
@@ -1498,6 +1491,8 @@ function showLoginScreen(message) {
   document.getElementById('screen-login').classList.add('active');
   document.getElementById('screen-select').classList.remove('active');
   document.getElementById('screen-dashboard').classList.remove('active');
+  document.getElementById('login-email-input').value = '';
+  document.getElementById('btn-send-link').disabled = false;
   const status = document.getElementById('login-status');
   if (message) {
     status.textContent = message;
@@ -1506,7 +1501,6 @@ function showLoginScreen(message) {
     status.textContent = '';
     status.className = 'login-status';
   }
-  document.getElementById('btn-send-link').disabled = false;
 }
 
 async function enterAuthenticatedDashboard(name, memberId) {
@@ -1536,9 +1530,9 @@ async function enterAuthenticatedDashboard(name, memberId) {
 }
 
 async function requestLogin() {
-  const select = document.getElementById('login-name-select');
-  const name = select.value;
-  if (!name) return;
+  const input = document.getElementById('login-email-input');
+  const email = input.value.trim();
+  if (!email) return;
   const btn = document.getElementById('btn-send-link');
   const status = document.getElementById('login-status');
   btn.disabled = true;
@@ -1548,7 +1542,7 @@ async function requestLogin() {
     const res = await fetch('/api/auth/request-login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ email }),
     });
     if (res.ok) {
       status.textContent = `Login link sent — check your email inbox.`;

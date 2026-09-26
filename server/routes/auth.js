@@ -9,19 +9,19 @@ const FROM    = process.env.FROM_EMAIL || 'noreply@tracker.fortifiedgym.com';
 const APP_URL = process.env.APP_URL    || 'https://fortified-tracker-v2-production.up.railway.app';
 const COOKIE  = 'session';
 
-// POST /api/auth/request-login  { name }
+// POST /api/auth/request-login  { email }
 router.post('/request-login', async (req, res) => {
-  const name = (req.body.name || '').trim();
-  if (!name) return res.status(400).json({ error: 'Name is required' });
+  const email = (req.body.email || '').trim().toLowerCase();
+  if (!email) return res.status(400).json({ error: 'Email is required' });
 
   const result = await pool.query(
-    'SELECT id, name, email FROM members WHERE LOWER(name) = LOWER($1)',
-    [name]
+    'SELECT id, name, email FROM members WHERE LOWER(email) = $1',
+    [email]
   );
 
   const member = result.rows[0];
-  if (!member || !member.email) {
-    return res.status(404).json({ error: 'Member not found or has no email on file' });
+  if (!member) {
+    return res.status(404).json({ error: 'No account found with that email address' });
   }
 
   const token     = crypto.randomBytes(32).toString('hex');
