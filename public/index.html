@@ -779,11 +779,11 @@
           <div class="set-header-label">Reps</div>
           <div></div>
         </div>
-        <div class="sets-list" id="sets-list"></div>
+        <div class="sets-list" id="sets-list" oninput="saveDraft()"></div>
         <button class="btn-add-set" onclick="addSet()">+ Add set</button>
         <div class="comments-wrap">
           <label class="comments-label" for="session-comments">Notes (optional)</label>
-          <textarea class="comments-input" id="session-comments" placeholder="How did it feel? Any details worth recording..."></textarea>
+          <textarea class="comments-input" id="session-comments" placeholder="How did it feel? Any details worth recording..." oninput="saveDraft()"></textarea>
         </div>
         <button class="btn-log" onclick="logSession()">Save session</button>
       </div>
@@ -1003,6 +1003,7 @@ async function enterDashboard() {
 }
 
 function switchMember() {
+  localStorage.removeItem('fortified_draft');
   document.getElementById('screen-dashboard').classList.remove('active');
   document.getElementById('screen-select').classList.add('active');
   document.getElementById('member-search').value = '';
@@ -1035,15 +1036,20 @@ async function showNav(tab) {
 // --- LOG VIEW ---
 let setCount = 0;
 
-function renderLogView() {
+function renderLogView(draft) {
   setCount = 0;
   const list = document.getElementById('sets-list');
   list.innerHTML = '';
   document.getElementById('log-lift-label').textContent = currentLift + ' — log today\'s sets';
   hidePBBanner();
-  addSet();
-  addSet();
-  addSet();
+  document.getElementById('session-comments').value = '';
+  if (draft) {
+    (draft.sets || []).forEach(s => addSet(s.kg, s.reps));
+    document.getElementById('session-comments').value = draft.comments || '';
+  } else {
+    localStorage.removeItem('fortified_draft');
+    addSet(); addSet(); addSet();
+  }
 }
 
 function selectLift(lift) {
@@ -1052,7 +1058,7 @@ function selectLift(lift) {
   renderLogView();
 }
 
-function addSet() {
+function addSet(kg, reps) {
   setCount++;
   const list = document.getElementById('sets-list');
   const row = document.createElement('div');
@@ -1061,11 +1067,11 @@ function addSet() {
   row.innerHTML = `
     <div class="set-label">S${setCount}</div>
     <div class="set-input-wrap">
-      <input class="set-input" type="number" step="0.5" min="0" placeholder="0" inputmode="decimal">
+      <input class="set-input" type="number" step="0.5" min="0" placeholder="0" inputmode="decimal"${kg !== undefined && kg !== '' ? ` value="${kg}"` : ''}>
       <span class="set-unit">kg</span>
     </div>
     <div class="set-input-wrap">
-      <input class="set-input" type="number" min="1" max="50" placeholder="0" inputmode="numeric">
+      <input class="set-input" type="number" min="1" max="50" placeholder="0" inputmode="numeric"${reps !== undefined && reps !== '' ? ` value="${reps}"` : ''}>
       <span class="set-unit">reps</span>
     </div>
     <button class="btn-remove" onclick="removeSet(this)" title="Remove set">×</button>
@@ -1092,7 +1098,7 @@ async function logSession() {
     const inputs = row.querySelectorAll('input');
     const kg = parseFloat(inputs[0].value);
     const reps = parseInt(inputs[1].value);
-    if (!isNaN(kg) && kg > 0 && !isNaN(reps) && reps > 0) {
+    if (!isNaN(kg) && kg >= 0 && !isNaN(reps) && reps > 0) {
       sets.push({ kg, reps });
     }
   });
@@ -1107,6 +1113,7 @@ async function logSession() {
 
   try {
     const result = await apiSaveSession(currentMemberId, currentLift, sets, comments, date);
+    localStorage.removeItem('fortified_draft');
     if (result.isPB) {
       showPBBanner(result.bestSet);
     } else {
@@ -1377,6 +1384,44 @@ function formatDate(iso) {
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   return `${parseInt(d)} ${months[parseInt(m)-1]} ${y}`;
 }
+
+// --- DRAFT ---
+function saveDraft() {
+  if (!currentMemberId) return;
+  const sets = [];
+  document.querySelectorAll('.set-row').forEach(row => {
+    const inputs = row.querySelectorAll('input');
+    sets.push({ kg: inputs[0].value, reps: inputs[1].value });
+  });
+  const comments = document.getElementById('session-comments').value;
+  localStorage.setItem('fortified_draft', JSON.stringify({
+    memberName: currentMember,
+    memberId: currentMemberId,
+    lift: currentLift,
+    sets,
+    comments,
+  }));
+}
+
+(async function restoreDraft() {
+  const raw = localStorage.getItem('fortified_draft');
+  if (!raw) return;
+  let draft;
+  try { draft = JSON.parse(raw); } catch(e) { localStorage.removeItem('fortified_draft'); return; }
+  if (!draft.memberName) return;
+  let member;
+  try { member = await apiGetOrCreateMember(draft.memberName); } catch(e) { return; }
+  currentMember = draft.memberName;
+  currentMemberId = member.id;
+  currentLift = draft.lift || 'Squat';
+  document.getElementById('screen-select').classList.remove('active');
+  document.getElementById('screen-dashboard').classList.add('active');
+  document.querySelectorAll('.nav-tab').forEach((t, i) => t.classList.toggle('active', i === 0));
+  document.querySelectorAll('.sub-content').forEach(s => s.classList.remove('active'));
+  document.getElementById('nav-log').classList.add('active');
+  syncDropdowns();
+  renderLogView(draft);
+})();
 </script>
 </body>
 </html>
