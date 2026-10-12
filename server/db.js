@@ -12,6 +12,7 @@ const SEED_MEMBERS = [
   ['Alison Rooney', 'robasalon2@aol.com'],
   ['Alison Stone', 'alistone71@outlook.com'],
   ['Alison Wood', 'nozbird@yahoo.co.uk'],
+  ['Amanda Ridout', 'ridout2658@yahoo.co.uk'],
   ['Amy Foley', 'ames35a@hotmail.com'],
   ['Amy Girling', 'amylgirling@gmail.com'],
   ['Andrew Gibson', 'afb.gibson@gmail.com'],
