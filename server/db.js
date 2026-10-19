@@ -3,6 +3,7 @@ const { Pool } = require('pg');
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 const SEED_MEMBERS = [
+  ['Adele Sear', 'adelesear@hotmail.co.uk'],
   ['Aga Atkins', 'agnieszka.atkins@gmail.com'],
   ['Aimee Granados', 'aimee.granados@gmail.com'],
   ['Alex Defries', 'alexdefries@hotmail.com'],
@@ -44,6 +45,7 @@ const SEED_MEMBERS = [
   ['Chetna Jain', 'chetnadubal@gmail.com'],
   ['Chirag Shah', 'chiragrrshah@gmail.com'],
   ['Chloe Otter', 'chloethornhill@hotmail.com'],
+  ['Chris Cox', 'coxy8785@gmail.com'],
   ['Christopher Epps', 'cmjepps@gmail.com'],
   ['Claire Britton', 'miclairey@hotmail.com'],
   ['Claire Lawrence', 'gaffney_27@hotmail.com'],
@@ -151,6 +153,7 @@ const SEED_MEMBERS = [
   ['Lindsey McCluskie', 'lindseymccluskie@hotmail.com'],
   ['Lisa Prior', 'lisa.prior148@gmail.com'],
   ['Liz Kehoe', 'liz.kehoe@hotmail.co.uk'],
+  ['Liz Whittaker', 'ew2712@gmail.com'],
   ['Louise Cassettari', 'louisecass@btinternet.com'],
   ['Louise Grant', 'louise.grant01@btinternet.com'],
   ['Lucy Barry', 'lucybarry@btconnect.com'],
@@ -246,6 +249,7 @@ const SEED_MEMBERS = [
   ['Viv Williams', 'viv-williams@hotmail.co.uk'],
   ['Wendy Lawrence', 'w.lawrence.lunt@gmail.com'],
   ['Wendy Melendez', 'wendy.melendez@yahoo.co.uk'],
+  ['Zaid Kassam', 'zaidkassam@icloud.com'],
   ['Zoe Jones', 'zcjjones@gmail.com'],
   ['Zoe Wilbourne', 'zoewilbourne@hotmail.com'],
 ];
